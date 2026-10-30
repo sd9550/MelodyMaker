@@ -5,17 +5,50 @@ import java.util.*;
 public class Melody {
 
     private Deque<Note> queue = new LinkedList<>();
-    private double duration = 0;
 
     public Melody(Deque<Note> notes) {
+        Deque<Note> temp = new LinkedList<>();
+
         while (!notes.isEmpty()) {
-            queue.addLast(notes.getFirst());
-            duration += notes.getFirst().getDuration();
-            notes.pop();
+            Note note = notes.pollFirst();
+            queue.offerLast(note);
+            temp.offerLast(note);
+        }
+
+        // put them back so the parameter's deque is unchanged
+        while (!temp.isEmpty()) {
+            notes.offerLast(temp.pollFirst());
         }
     }
+
     public double getTotalDuration() {
-        return duration;
+        Deque<Note> temp = new LinkedList<>();
+        double total = 0;
+        boolean inSection = false; // checks for repeat section
+        double sectionSum = 0;
+
+        while (!queue.isEmpty()) {
+            Note n = queue.pollFirst();
+            total += n.getDuration();
+            if (n.isRepeat()) {
+                if (!inSection) {
+                    // the first true note begins the repeat section
+                    inSection = true;
+                    sectionSum = n.getDuration();
+                } else {
+                    // second true not ends the repeat section
+                    sectionSum += n.getDuration();
+                    total += sectionSum;      // replay the whole span
+                    inSection = false;
+                    sectionSum = 0; // reset the repeat section variables in case there is another one
+                }
+            } else if (inSection) {
+                sectionSum += n.getDuration();
+            }
+            temp.offerLast(n);
+        }
+
+        return total;
     }
 
     @Override
@@ -25,7 +58,7 @@ public class Melody {
 
         while (!queue.isEmpty()) {
             Note note = queue.pollFirst();
-            sb.append(note.toString()).append("\n");
+            sb.append(note.toString()).append("\n"); // added a newline for better formatting
             temp.offerLast(note);
         }
 
@@ -37,15 +70,17 @@ public class Melody {
     }
 
     public void changeTempo(double tempo) {
+        if (tempo <= 0) {
+            throw new IllegalArgumentException("tempo must be greater than zero");
+        }
+
         Deque<Note> temp = new LinkedList<>();
 
         while (!queue.isEmpty()) {
             Note note = queue.pollFirst();
-            note.setDuration(note.getDuration() * tempo);
+            note.setDuration(note.getDuration() * tempo); // this seems to work fine
             temp.offerLast(note);
         }
-
-        duration *= tempo;
 
         while (!temp.isEmpty()) {
             queue.offerLast(temp.pollFirst()); // restore original order
@@ -53,18 +88,36 @@ public class Melody {
     }
 
     public void reverse() {
-        queue = queue.reversed();
+        Deque<Note> stack = new LinkedList<>();
+
+        while (!queue.isEmpty()) {
+            stack.push(queue.pollFirst());
+        }
+
+        while (!stack.isEmpty()) {
+            queue.offerLast(stack.pop());
+        }
+
+        if (!queue.isEmpty()) {
+            queue.peekFirst().setFirstNote(true);
+            assert queue.peekLast() != null;
+            queue.peekLast().setFirstNote(false);
+        }
     }
 
     public void append(Melody other) {
-        Deque<Note> otherSong = other.getNotes();
+        Deque<Note> temp = new LinkedList<>();
 
-        while (!otherSong.isEmpty()) {
-            queue.addLast(otherSong.getFirst());
-            duration += otherSong.getFirst().getDuration();
-            otherSong.pop();
+        while (!other.queue.isEmpty()) {
+            Note note = other.queue.pollFirst();
+            Note copy = new Note(note);
+            queue.offerLast(copy);
+            temp.offerLast(note);
         }
 
+        while (!temp.isEmpty()) {
+            other.queue.offerLast(temp.pollFirst()); // restore original order
+        }
     }
 
     public void play() {
@@ -82,6 +135,19 @@ public class Melody {
     }
 
     public Deque<Note> getNotes() {
-        return queue;
+        Deque<Note> copy = new LinkedList<>();
+        Deque<Note> temp = new LinkedList<>();
+
+        while (!queue.isEmpty()) {
+            Note note = queue.pollFirst();
+            copy.offerLast(note);
+            temp.offerLast(note);
+        }
+
+        while (!temp.isEmpty()) {
+            queue.offerLast(temp.pollFirst());
+        }
+
+        return copy;
     }
 }
