@@ -30,6 +30,8 @@ public class Melody {
         while (!queue.isEmpty()) {
             Note n = queue.pollFirst();
             total += n.getDuration();
+
+            // comment out this if-else block to test MelodyTestWithoutRepeat
             if (n.isRepeat()) {
                 if (!inSection) {
                     // the first true note begins the repeat section
@@ -45,6 +47,7 @@ public class Melody {
             } else if (inSection) {
                 sectionSum += n.getDuration();
             }
+
             temp.offerLast(n);
         }
 
